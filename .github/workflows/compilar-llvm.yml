@@ -1,25 +1,101 @@
+# =============================================================================
+# Fábrica de Bottles — Compilar LLVM para macOS 13 Ventura (Intel x86_64)
+# =============================================================================
+#
+# COMO USAR:
+#   1. Coloque este arquivo em:  .github/workflows/compilar-llvm.yml
+#   2. Faça push para o repositório (público, para minutos gratuitos ilimitados)
+#   3. Vá em Actions → "Compilar LLVM para Ventura (Intel)" → Run workflow
+#   4. Aguarde (~1–3 horas para LLVM)
+#   5. Baixe o artefato "llvm-ventura-bottle" na página do workflow
+#   6. No seu Mac:
+#        brew install --force ./llvm--<versão>.ventura.bottle.tar.gz
+#
+# NOTAS:
+#   - O runner é macOS 15 Intel, mas compilamos com MACOSX_DEPLOYMENT_TARGET=13.0
+#     para gerar binários compatíveis com Ventura.
+#   - O repositório DEVE ser público para usar minutos macOS gratuitos.
+#   - O label "macos-15-intel" é standard/gratuito e ficará disponível até ago/2027.
+# =============================================================================
+
 name: Compilar LLVM para Ventura (Intel)
 
 on:
-  workflow_dispatch: # Isso permite que você inicie a compilação manualmente clicando em um botão
+  workflow_dispatch:
+    inputs:
+      formula:
+        description: "Fórmula do Homebrew para compilar (ex: llvm, gcc, cmake)"
+        required: true
+        default: "llvm"
+
+env:
+  # Força o compilador a não usar APIs mais novas que macOS 13
+  MACOSX_DEPLOYMENT_TARGET: "13.0"
 
 jobs:
   build-and-bottle:
-    runs-on: macos-12  # Esta é a máquina Intel com macOS Ventura que o GitHub oferece
+    runs-on: macos-15-intel        # Runner Intel x86_64 gratuito (standard)
+    timeout-minutes: 360            # 6 horas — LLVM é gigante
+
     steps:
-      - name: Checkout do repositório
-        uses: actions/checkout@v4
-
-      - name: Instalar LLVM e Gerar Bottle
+      # ------------------------------------------------------------------
+      # 0. Diagnóstico — confirmar que estamos em Intel + verificar ambiente
+      # ------------------------------------------------------------------
+      - name: Diagnóstico do ambiente
         run: |
-          # 1. Tenta instalar compilando do zero (build-from-source)
-          brew install --build-from-source llvm
-          
-          # 2. Transforma a instalação em um arquivo binário (.tar.gz)
-          brew bottle llvm
+          echo "=== Arquitetura ==="
+          uname -m                     # deve mostrar x86_64
+          sw_vers                       # versão do macOS do runner
+          echo "=== Deployment Target ==="
+          echo "MACOSX_DEPLOYMENT_TARGET=$MACOSX_DEPLOYMENT_TARGET"
+          echo "=== Homebrew ==="
+          brew --version
+          echo "=== Espaço em disco ==="
+          df -h /
 
-      - name: Salvar o arquivo gerado
+      # ------------------------------------------------------------------
+      # 1. Liberar espaço em disco (runners macOS podem ter pouco espaço)
+      # ------------------------------------------------------------------
+      - name: Liberar espaço em disco
+        run: |
+          # Remove coisas que não precisamos para ganhar ~15–20 GB
+          sudo rm -rf /Applications/Xcode_*.app || true
+          sudo rm -rf /usr/local/lib/android || true
+          sudo rm -rf /opt/hostedtoolcache || true
+          echo "=== Espaço após limpeza ==="
+          df -h /
+
+      # ------------------------------------------------------------------
+      # 2. Atualizar Homebrew e instalar dependências
+      # ------------------------------------------------------------------
+      - name: Atualizar Homebrew
+        run: |
+          brew update
+
+      # ------------------------------------------------------------------
+      # 3. Compilar a fórmula do zero
+      # ------------------------------------------------------------------
+      - name: Compilar ${{ github.event.inputs.formula }}
+        run: |
+          echo "Compilando ${{ github.event.inputs.formula }} com deployment target $MACOSX_DEPLOYMENT_TARGET..."
+          brew install --build-from-source --verbose ${{ github.event.inputs.formula }}
+
+      # ------------------------------------------------------------------
+      # 4. Gerar o bottle (tarball do binário compilado)
+      # ------------------------------------------------------------------
+      - name: Gerar bottle
+        run: |
+          cd /tmp
+          brew bottle --no-rebuild --json ${{ github.event.inputs.formula }}
+          echo "=== Arquivos gerados ==="
+          ls -lh *.bottle.*
+
+      # ------------------------------------------------------------------
+      # 5. Fazer upload do bottle como artefato do GitHub
+      # ------------------------------------------------------------------
+      - name: Upload do bottle
         uses: actions/upload-artifact@v4
         with:
-          name: llvm-ventura-bottle
-          path: "*.bottle.tar.gz" # Procura o arquivo gerado e o disponibiliza para download
+          name: ${{ github.event.inputs.formula }}-ventura-bottle
+          path: /tmp/*.bottle.*
+          retention-days: 30          # mantém por 30 dias
