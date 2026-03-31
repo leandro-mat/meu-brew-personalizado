@@ -1,0 +1,25 @@
+name: Compilar LLVM para Ventura (Intel)
+
+on:
+  workflow_dispatch: # Isso permite que você inicie a compilação manualmente clicando em um botão
+
+jobs:
+  build-and-bottle:
+    runs-on: macos-13  # Esta é a máquina Intel com macOS Ventura que o GitHub oferece
+    steps:
+      - name: Checkout do repositório
+        uses: actions/checkout@v4
+
+      - name: Instalar LLVM e Gerar Bottle
+        run: |
+          # 1. Tenta instalar compilando do zero (build-from-source)
+          brew install --build-from-source llvm
+          
+          # 2. Transforma a instalação em um arquivo binário (.tar.gz)
+          brew bottle llvm
+
+      - name: Salvar o arquivo gerado
+        uses: actions/upload-artifact@v4
+        with:
+          name: llvm-ventura-bottle
+          path: "*.bottle.tar.gz" # Procura o arquivo gerado e o disponibiliza para download
