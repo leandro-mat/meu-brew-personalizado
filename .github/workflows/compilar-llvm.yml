@@ -88,7 +88,7 @@ jobs:
           fi
 
           echo "=== Compilando $FORMULA com deployment target $MACOSX_DEPLOYMENT_TARGET ==="
-          brew install --build-from-source --build-bottle --verbose "$FORMULA"
+          brew install --build-bottle --verbose "$FORMULA"
 
       # ------------------------------------------------------------------
       # 4. Gerar o bottle (tarball do binário compilado)
