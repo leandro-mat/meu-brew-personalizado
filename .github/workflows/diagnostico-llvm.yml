@@ -16,24 +16,22 @@ jobs:
           export HOMEBREW_NO_INSTALL_FROM_API=1
           FORMULA_PATH="$(brew formula llvm)"
 
-          echo "=== Caminho da fórmula ==="
-          echo "$FORMULA_PATH"
-
-          echo ""
           echo "=== ANTES dos seds ==="
-          grep -n 'TARGETS_TO_BUILD\|DEPLOYMENT_TARGET\|OSX_SYSROOT' "$FORMULA_PATH"
+          grep -n 'TARGETS_TO_BUILD\|DEPLOYMENT_TARGET' "$FORMULA_PATH"
 
-          echo ""
-          echo "=== Aplicando seds ==="
           sed -i '' 's/-DLLVM_TARGETS_TO_BUILD=all/-DLLVM_TARGETS_TO_BUILD=X86/' "$FORMULA_PATH"
           sed -i '' 's/-DLLVM_TARGETS_TO_BUILD=Native.*"/-DLLVM_TARGETS_TO_BUILD=X86"/' "$FORMULA_PATH"
-          sed -i '' '/-DCMAKE_OSX_SYSROOT/a\
+          sed -i '' '/DLLVM_TARGETS_TO_BUILD=X86/a\
             "-DCMAKE_OSX_DEPLOYMENT_TARGET=13.0",' "$FORMULA_PATH"
 
           echo ""
           echo "=== DEPOIS dos seds ==="
-          grep -n 'TARGETS_TO_BUILD\|DEPLOYMENT_TARGET\|OSX_SYSROOT' "$FORMULA_PATH"
+          grep -n 'TARGETS_TO_BUILD\|DEPLOYMENT_TARGET' "$FORMULA_PATH"
 
           echo ""
-          echo "=== Contexto da linha SYSROOT (10 linhas depois) ==="
-          grep -n -A10 'OSX_SYSROOT' "$FORMULA_PATH"
+          echo "=== Contexto linha 122 (5 antes, 5 depois) ==="
+          sed -n '117,127p' "$FORMULA_PATH"
+
+          echo ""
+          echo "=== Contexto linha 245 (5 antes, 5 depois) ==="
+          sed -n '240,252p' "$FORMULA_PATH"
