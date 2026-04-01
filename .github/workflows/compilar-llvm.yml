@@ -6,7 +6,7 @@
 #   1. Coloque este arquivo em:  .github/workflows/compilar-llvm.yml
 #   2. Faça push para o repositório (público, para minutos gratuitos ilimitados)
 #   3. Vá em Actions → "Compilar LLVM para Ventura (Intel)" → Run workflow
-#   4. Aguarde (~1–3 horas para LLVM)
+#   4. Aguarde (~1–2 horas para LLVM com target X86 apenas)
 #   5. Baixe o artefato "llvm-ventura-bottle" na página do workflow
 #   6. No seu Mac:
 #        brew install --force ./llvm--<versão>.ventura.bottle.tar.gz
@@ -16,6 +16,7 @@
 #     para gerar binários compatíveis com Ventura.
 #   - O repositório DEVE ser público para usar minutos macOS gratuitos.
 #   - O label "macos-15-intel" é standard/gratuito e ficará disponível até ago/2027.
+#   - Limitamos LLVM_TARGETS_TO_BUILD=X86 para reduzir o tempo de compilação.
 # =============================================================================
 
 name: Compilar LLVM para Ventura (Intel)
@@ -29,13 +30,12 @@ on:
         default: "llvm"
 
 env:
-  # Força o compilador a não usar APIs mais novas que macOS 13
   MACOSX_DEPLOYMENT_TARGET: "13.0"
 
 jobs:
   build-and-bottle:
-    runs-on: macos-15-intel        # Runner Intel x86_64 gratuito (standard)
-    timeout-minutes: 360            # 6 horas — LLVM é gigante
+    runs-on: macos-15-intel
+    timeout-minutes: 360
 
     steps:
       # ------------------------------------------------------------------
@@ -44,8 +44,8 @@ jobs:
       - name: Diagnóstico do ambiente
         run: |
           echo "=== Arquitetura ==="
-          uname -m                     # deve mostrar x86_64
-          sw_vers                       # versão do macOS do runner
+          uname -m
+          sw_vers
           echo "=== Deployment Target ==="
           echo "MACOSX_DEPLOYMENT_TARGET=$MACOSX_DEPLOYMENT_TARGET"
           echo "=== Homebrew ==="
@@ -58,7 +58,6 @@ jobs:
       # ------------------------------------------------------------------
       - name: Liberar espaço em disco
         run: |
-          # Remove coisas que não precisamos para ganhar ~15–20 GB
           sudo rm -rf /Applications/Xcode_*.app || true
           sudo rm -rf /usr/local/lib/android || true
           sudo rm -rf /opt/hostedtoolcache || true
@@ -66,19 +65,29 @@ jobs:
           df -h /
 
       # ------------------------------------------------------------------
-      # 2. Atualizar Homebrew e instalar dependências
+      # 2. Atualizar Homebrew
       # ------------------------------------------------------------------
       - name: Atualizar Homebrew
         run: |
           brew update
 
       # ------------------------------------------------------------------
-      # 3. Compilar a fórmula do zero
+      # 3. Limitar targets do LLVM a X86 e compilar
       # ------------------------------------------------------------------
       - name: Compilar ${{ github.event.inputs.formula }}
         run: |
-          echo "Compilando ${{ github.event.inputs.formula }} com deployment target $MACOSX_DEPLOYMENT_TARGET..."
-          brew install --build-from-source --verbose ${{ github.event.inputs.formula }}
+          FORMULA="${{ github.event.inputs.formula }}"
+
+          if [ "$FORMULA" = "llvm" ]; then
+            echo "=== Limitando LLVM targets para X86 apenas ==="
+            FORMULA_PATH="$(brew formula llvm)"
+            sed -i '' 's/-DLLVM_TARGETS_TO_BUILD=all/-DLLVM_TARGETS_TO_BUILD=X86/' "$FORMULA_PATH"
+            echo "=== Verificação da edição ==="
+            grep -n 'TARGETS_TO_BUILD' "$FORMULA_PATH"
+          fi
+
+          echo "=== Compilando $FORMULA com deployment target $MACOSX_DEPLOYMENT_TARGET ==="
+          brew install --build-from-source --verbose "$FORMULA"
 
       # ------------------------------------------------------------------
       # 4. Gerar o bottle (tarball do binário compilado)
@@ -91,11 +100,11 @@ jobs:
           ls -lh *.bottle.*
 
       # ------------------------------------------------------------------
-      # 5. Fazer upload do bottle como artefato do GitHub
+      # 5. Upload do bottle como artefato do GitHub
       # ------------------------------------------------------------------
       - name: Upload do bottle
         uses: actions/upload-artifact@v4
         with:
           name: ${{ github.event.inputs.formula }}-ventura-bottle
           path: /tmp/*.bottle.*
-          retention-days: 30          # mantém por 30 dias
+          retention-days: 30
