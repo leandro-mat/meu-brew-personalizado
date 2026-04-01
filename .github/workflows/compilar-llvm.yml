@@ -79,6 +79,9 @@ jobs:
           FORMULA="${{ github.event.inputs.formula }}"
 
           if [ "$FORMULA" = "llvm" ]; then
+            echo "=== Forçando uso do tap local ==="
+            export HOMEBREW_NO_INSTALL_FROM_API=1
+
             echo "=== Limitando LLVM targets para X86 apenas ==="
             FORMULA_PATH="$(brew formula llvm)"
             sed -i '' 's/-DLLVM_TARGETS_TO_BUILD=all/-DLLVM_TARGETS_TO_BUILD=X86/' "$FORMULA_PATH"
@@ -87,10 +90,8 @@ jobs:
             grep -n 'TARGETS_TO_BUILD' "$FORMULA_PATH"
           fi
 
-          echo "=== Compilando $FORMULA com deployment target $MACOSX_DEPLOYMENT_TARGET ==="
-          brew install --build-bottle --verbose "$FORMULA"
-
-      # ------------------------------------------------------------------
+    echo "=== Compilando $FORMULA com deployment target $MACOSX_DEPLOYMENT_TARGET ==="
+    brew install --build-bottle --verbose "$FORMULA"      # ------------------------------------------------------------------
       # 4. Gerar o bottle (tarball do binário compilado)
       # ------------------------------------------------------------------
       - name: Gerar bottle
