@@ -1,0 +1,29 @@
+# =============================================================================
+# TESTE — Diagnóstico da fórmula LLVM (não compila nada)
+# =============================================================================
+
+name: Diagnóstico fórmula LLVM
+
+on:
+  workflow_dispatch:
+
+jobs:
+  diagnostico:
+    runs-on: macos-15-intel
+    timeout-minutes: 10
+
+    steps:
+      - name: Atualizar Homebrew
+        run: brew update
+
+      - name: Diagnóstico da fórmula LLVM
+        run: |
+          FORMULA_PATH="$(brew formula llvm)"
+          echo "=== Caminho da fórmula ==="
+          echo "$FORMULA_PATH"
+          echo ""
+          echo "=== Todas as linhas com TARGETS_TO_BUILD ==="
+          grep -n -i 'targets_to_build' "$FORMULA_PATH"
+          echo ""
+          echo "=== Contexto amplo (5 antes, 15 depois de cada match) ==="
+          grep -n -i -B5 -A15 'targets_to_build' "$FORMULA_PATH"
