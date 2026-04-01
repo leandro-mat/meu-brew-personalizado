@@ -77,22 +77,27 @@ jobs:
       - name: Compilar ${{ github.event.inputs.formula }}
         run: |
           FORMULA="${{ github.event.inputs.formula }}"
-
+  
           if [ "$FORMULA" = "llvm" ]; then
             echo "=== Forçando uso do tap local ==="
             export HOMEBREW_NO_INSTALL_FROM_API=1
-
-            echo "=== Limitando LLVM targets para X86 apenas ==="
+  
             FORMULA_PATH="$(brew formula llvm)"
+  
+            echo "=== Limitando LLVM targets para X86 apenas ==="
             sed -i '' 's/-DLLVM_TARGETS_TO_BUILD=all/-DLLVM_TARGETS_TO_BUILD=X86/' "$FORMULA_PATH"
             sed -i '' 's/-DLLVM_TARGETS_TO_BUILD=Native.*"/-DLLVM_TARGETS_TO_BUILD=X86"/' "$FORMULA_PATH"
-            echo "=== Verificação da edição ==="
-            grep -n 'TARGETS_TO_BUILD' "$FORMULA_PATH"
+  
+            echo "=== Injetando deployment target 13.0 ==="
+            echo '      -DCMAKE_OSX_DEPLOYMENT_TARGET=13.0' > /tmp/deploy_target.txt
+            sed -i '' '122r /tmp/deploy_target.txt' "$FORMULA_PATH"
+  
+            echo "=== Verificação das edições ==="
+            grep -n 'TARGETS_TO_BUILD\|DEPLOYMENT_TARGET' "$FORMULA_PATH"
           fi
-
+  
           echo "=== Compilando $FORMULA com deployment target $MACOSX_DEPLOYMENT_TARGET ==="
           brew install --build-bottle --verbose "$FORMULA"      
-      
       # ------------------------------------------------------------------
       # 4. Gerar o bottle (tarball do binário compilado)
       # ------------------------------------------------------------------
