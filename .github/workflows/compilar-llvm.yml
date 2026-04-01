@@ -82,12 +82,13 @@ jobs:
             echo "=== Limitando LLVM targets para X86 apenas ==="
             FORMULA_PATH="$(brew formula llvm)"
             sed -i '' 's/-DLLVM_TARGETS_TO_BUILD=all/-DLLVM_TARGETS_TO_BUILD=X86/' "$FORMULA_PATH"
+            sed -i '' 's/-DLLVM_TARGETS_TO_BUILD=Native.*"/-DLLVM_TARGETS_TO_BUILD=X86"/' "$FORMULA_PATH"
             echo "=== Verificação da edição ==="
             grep -n 'TARGETS_TO_BUILD' "$FORMULA_PATH"
           fi
 
           echo "=== Compilando $FORMULA com deployment target $MACOSX_DEPLOYMENT_TARGET ==="
-          brew install --build-from-source --verbose "$FORMULA"
+          brew install --build-from-source --build-bottle --verbose "$FORMULA"
 
       # ------------------------------------------------------------------
       # 4. Gerar o bottle (tarball do binário compilado)
