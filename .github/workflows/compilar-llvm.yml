@@ -90,8 +90,10 @@ jobs:
             grep -n 'TARGETS_TO_BUILD' "$FORMULA_PATH"
           fi
 
-    echo "=== Compilando $FORMULA com deployment target $MACOSX_DEPLOYMENT_TARGET ==="
-    brew install --build-bottle --verbose "$FORMULA"      # ------------------------------------------------------------------
+          echo "=== Compilando $FORMULA com deployment target $MACOSX_DEPLOYMENT_TARGET ==="
+          brew install --build-bottle --verbose "$FORMULA"      
+      
+      # ------------------------------------------------------------------
       # 4. Gerar o bottle (tarball do binário compilado)
       # ------------------------------------------------------------------
       - name: Gerar bottle
